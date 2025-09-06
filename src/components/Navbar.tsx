@@ -3,56 +3,57 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import LoginButton from './LoginButton';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  const navLinks = [
+    { name: 'Features', href: '#features' },
+    { name: 'How It Works', href: '#how-it-works' },
+    { name: 'Use Cases', href: '#use-cases' },
+  ];
+
   return (
-    <nav className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
+    <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-slate-200 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <Link href="/" className="flex items-center">
-            <div className="w-8 h-8 bg-gray-800 rounded-md flex items-center justify-center mr-2">
-              <span className="text-white font-bold text-sm">QP</span>
+        
+          <Link href="/" className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-slate-800 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-lg">L</span>
             </div>
-            <span className="text-xl font-semibold text-gray-800">
-              QuickPitch
+            <span className="text-xl font-semibold text-slate-800">
+              Lexica
             </span>
           </Link>
 
-          {/* Desktop Navigation Links */}
-          <div className="hidden md:flex space-x-8">
-            <a href="#features" className="text-gray-600 hover:text-gray-800 transition-colors">
-              Features
-            </a>
-            <a href="#how-it-works" className="text-gray-600 hover:text-gray-800 transition-colors">
-              How It Works
-            </a>
-            <a href="#use-cases" className="text-gray-600 hover:text-gray-800 transition-colors">
-              Use Cases
-            </a>
-            <a href="#pricing" className="text-gray-600 hover:text-gray-800 transition-colors">
-              Pricing
-            </a>
+         
+          <div className="hidden md:flex items-center space-x-8">
+            {navLinks.map((link) => (
+              <a key={link.name} href={link.href} className="text-slate-600 hover:text-amber-600 font-medium transition-colors">
+                {link.name}
+              </a>
+            ))}
           </div>
 
-          {/* Auth Buttons */}
+          
           <div className="hidden md:flex items-center space-x-4">
            <LoginButton />
             <Link 
               href="/generate"
-              className="bg-gray-800 text-white px-5 py-2 rounded-md hover:bg-gray-900 transition-colors"
+              className="bg-slate-800 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-slate-900 transition-all shadow-sm"
             >
               Get Started
             </Link>
           </div>
 
           {/* Mobile menu button */}
-          <div className="md:hidden">
+          <div className="md:hidden flex items-center">
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="text-gray-600 hover:text-gray-800 focus:outline-none"
+              className="text-slate-600 hover:text-slate-800 focus:outline-none"
+              aria-label="Toggle menu"
             >
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 {isMenuOpen ? (
@@ -64,55 +65,42 @@ export default function Navbar() {
             </button>
           </div>
         </div>
+      </div>
 
-        {/* Mobile Navigation Menu */}
+      {/* Mobile Navigation Menu */}
+      <AnimatePresence>
         {isMenuOpen && (
-          <div className="md:hidden">
-            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white border border-gray-200 rounded-md mt-2 shadow-md">
-              <a
-                href="#features"
-                className="block px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-md"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Features
-              </a>
-              <a
-                href="#how-it-works"
-                className="block px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-md"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                How It Works
-              </a>
-              <a
-                href="#use-cases"
-                className="block px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-md"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Use Cases
-              </a>
-              <a
-                href="#pricing"
-                className="block px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-md"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Pricing
-              </a>
-              <div className="border-t border-gray-200 pt-2 mt-2">
-               
-                  <LoginButton />
-                
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="md:hidden"
+          >
+            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+              {navLinks.map((link) => (
+                <a
+                  key={link.name}
+                  href={link.href}
+                  className="block px-3 py-2 text-base font-medium text-slate-600 hover:text-amber-600 hover:bg-amber-50 rounded-md"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  {link.name}
+                </a>
+              ))}
+              <div className="border-t border-slate-200 pt-4 mt-4 px-3 flex items-center justify-between">
+                <LoginButton />
                 <Link
                   href="/generate"
-                  className="block px-3 py-2 bg-gray-800 text-white rounded-md mt-2 text-center hover:bg-gray-900"
+                  className="bg-slate-800 text-white px-5 py-2 rounded-md text-center font-semibold hover:bg-slate-900"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Get Started
                 </Link>
               </div>
             </div>
-          </div>
+          </motion.div>
         )}
-      </div>
+      </AnimatePresence>
     </nav>
   );
 }
