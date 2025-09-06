@@ -1,188 +1,130 @@
-// src/app/api/generate/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
-export const maxDuration = 30;
+// Set a longer timeout for Vercel, as AI generation can take time
+export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
-    const { idea } = await req.json();
+    const { idea, template } = await req.json();
 
-    // Validation
-    if (!idea || typeof idea !== 'string') {
-      return NextResponse.json({ error: "Valid idea string is required" }, { status: 400 });
+    // --- Validation ---
+    if (
+      !idea ||
+      typeof idea !== "string" ||
+      !template ||
+      typeof template !== "string"
+    ) {
+      return NextResponse.json(
+        { error: "A valid idea and report template are required" },
+        { status: 400 }
+      );
     }
 
     const trimmedIdea = idea.trim();
-    if (trimmedIdea.length < 5) {
-      return NextResponse.json({ error: "Idea must be at least 5 characters long" }, { status: 400 });
+    if (trimmedIdea.length < 10) {
+      return NextResponse.json(
+        { error: "Your request must be at least 10 characters long" },
+        { status: 400 }
+      );
     }
 
-    // OpenRouter API call with enhanced prompt
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
-        "X-Title": "QuickPitch AI",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
-        messages: [
-  {
-    role: "system",
-    content: `You are an expert VC pitch deck writer. Produce a professional 10-page pitch deck. IMPORTANT RULES:
-1) Do NOT use Markdown notation. Do NOT use asterisks (*), backticks (\`), bullet glyphs (•), or any decorative characters.
-2) Output must be plain UTF-8 text only, with clear page headers like "PAGE 1: COVER SLIDE".
-3) Separate pages with exactly TWO newline characters (\\n\\n) between pages.
-4) Each page must include the exact subheadings shown below and content in full sentences (no lists with bullet glyphs). If a list is required, write numbered sentences (1., 2., 3.).
-5) Use realistic but conservative numbers when estimating TAM/SAM/SOM and metrics; indicate when numbers are hypothetical.
-6) Keep tone formal and investor-ready. No emojis, no casual language.
-7) Keep the output concise but thorough (about 8–12 sentences per page).`
-  },
-  {
-    role: "user",
-    content: `Create a complete VC pitch deck for the idea: "${trimmedIdea}". 
-Follow these pages exactly (use the headings shown):
+    // --- OpenRouter API Call with the final, intelligent prompt ---
+    const response = await fetch(
+      "https://openrouter.ai/api/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          "HTTP-Referer":
+            process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
+          "X-Title": "AI Report Generator",
+        },
+        body: JSON.stringify({
+          model: "openrouter/sonoma-dusk-alpha", // A powerful and reliable model for detailed reports
+          messages: [
+            {
+              role: "system",
+              content: `You are MD Tahseen Alam, a Master AI Reports Architect. Your primary function is to generate a wide variety of professional reports by adopting specific expert personas and following precise templates. Your reports are known for their exceptional detail, clarity, and flawless formatting.
 
-PAGE 1: COVER SLIDE
-- Company Name
-- Tagline
-- Logo description
+**--- CRITICAL FORMATTING & CONTENT POLICIES (NON-NEGOTIABLE) ---**
 
-PAGE 2: PROBLEM STATEMENT
-- The Problem
-- Market Pain
-- Current Solutions
+1.  **STRICTLY FORBIDDEN: NO MARKDOWN OR SPECIAL CHARACTERS.**
+    The entire output MUST be pure UTF-8 plain text. The use of asterisks (*), hashes (#), bullet points (•), at symbols (@), or any other decorative or special characters for emphasis or structure is strictly forbidden. All emphasis must come from the quality of the writing itself. The only exception is the Indian Rupee symbol (₹).
 
-PAGE 3: SOLUTION
-- Our Solution
-- Key Features (write as numbered sentences)
-- How it Works
+2.  **NO UNSOLICITED REFERENCES.**
+    Do NOT include a "References," "Bibliography," or "Sources" section at the end of the report UNLESS the user's prompt explicitly asks for citations or sources. This is especially true for the Academic persona.
 
-PAGE 4: MARKET OPPORTUNITY
-- TAM/SAM/SOM (provide numbers and brief assumptions)
-- Target Customers
-- Market Trends
+**--- ADAPTIVE DETAIL LEVEL ---**
+You MUST adjust the depth and length of your report based on the user's prompt length.
+-   **IF the user's request is detailed (more than 25 words):** Assume they want a comprehensive, deep-dive report. Maximize detail in every section. This requires deep analysis, narrative storytelling, and the invention of plausible data to support your points.
+-   **IF the user's request is very short (less than 25 words):** Assume they want a high-level summary. Keep explanations clear but concise. Generate a shorter, executive-summary-style report.
 
-PAGE 5: BUSINESS MODEL
-- Revenue Streams
-- Pricing Strategy
-- Sales Channels
+**--- GENERAL CONTEXT & FORMATTING ---**
+-   Your analysis is for the Indian market as of late 2025. Use Indian Rupees (₹).
+-   The output MUST use ALL CAPS section headers, separated by two newlines.
 
-PAGE 6: COMPETITIVE LANDSCAPE
-- Competitors
-- Our Advantages
-- Differentiation
+--- EXPERT PERSONA & TEMPLATE LIBRARY ---
 
-PAGE 7: TRACTION & MILESTONES
-- Current Progress
-- Key Metrics (numbers)
-- Future Milestones
+**1. PERSONA: Dr. A. Kumar, Senior Academic Researcher**
+   (For: 'academic_synopsis', 'research_paper', 'project_report')
+   -   **TONE:** Formal, academic, objective.
+   -   **STRUCTURE:** Abstract, Introduction, Literature Review, Methodology, Findings, Conclusion. (No References unless asked).
 
-PAGE 8: TEAM
-- Founding Team (short bios)
-- Advisors (if any)
-- Hiring Plan
+**2. PERSONA: Priya Sharma, Corporate Strategy Consultant**
+   (For: 'market_analysis', 'business_report')
+   -   **TONE:** Professional, concise, data-driven, with actionable recommendations.
+   -   **STRUCTURE:** Executive Summary, Key Findings (bulleted), Market Analysis, Competitive Landscape, Strategic Recommendations.
 
-PAGE 9: FUNDING ASK
-- Amount Needed
-- Use of Funds (percent breakdown)
-- Timeline
+**3. PERSONA: Rohan Verma, Freelance Consultant**
+   (For: 'client_proposal', 'freelance_report')
+   -   **TONE:** Persuasive, client-centric, confident.
+   -   **STRUCTURE:** Introduction, Understanding Your Needs, Proposed Solution, Deliverables, Timeline, and Pricing (in ₹).
 
-PAGE 10: CONTACT
-- Contact Information
-- Website
-- Social Media (if any)
+**4. PERSONA: Mrs. S. Iyer, Experienced Educator**
+   (For: 'lesson_plan', 'evaluation_report')
+   -   **TONE:** Clear, structured, educational.
+   -   **STRUCTURE:** Learning Objectives, Materials, Step-by-Step Activities, Assessment, Differentiation.
+---
 
-Remember: plain text only, no Markdown, no asterisks, no decorative characters. Separate pages with exactly two newlines.`
-  }
-],
+Your final output should ONLY be the generated report itself, flawlessly matching the chosen persona, template, and all formatting and content policies.`,
+            },
+            {
+              role: "user",
+              content: `A user has selected the "${template}" template.
+                
+                Their core request is: "${trimmedIdea}"
 
-        max_tokens: 2000,
-        temperature: 0.7,
-      })
-    });
+                Now, fully embody the correct expert persona. Based on the length of the user's request, determine the appropriate level of detail. Generate the complete report based on the persona's specific template and rules.`,
+            },
+          ],
+          max_tokens: 10000,
+          temperature: 0.7,
+        }),
+      }
+    );
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.error("OpenRouter Error:", errorData);
-      throw new Error(errorData.error?.message || "Failed to generate pitch");
+      console.error("OpenRouter API Error:", errorData);
+      throw new Error(
+        errorData.error?.message || "Failed to generate report from API"
+      );
     }
 
     const data = await response.json();
     const pitch = data.choices[0]?.message?.content?.trim() || "";
 
     if (!pitch) {
-      throw new Error("Empty response from OpenRouter");
+      throw new Error("The AI returned an empty response. Please try again.");
     }
 
     return NextResponse.json({ pitch });
-
   } catch (error: any) {
-    console.error("Generation Error:", error);
-    
-    // Enhanced fallback with proper structure
-    const mockPitch = `PAGE 1: COVER SLIDE
-Company Name: ${idea.split(' ')[0]}Tech Solutions
-Tagline: "Revolutionizing the future of innovation"
-Logo: Modern abstract design representing connectivity and growth
-
-PAGE 2: PROBLEM STATEMENT
-The Problem: Businesses struggle with inefficient processes and outdated technology
-Market Pain: Companies lose an average of $2.3M annually due to operational inefficiencies
-Current Solutions: Existing tools are fragmented, expensive, and lack integration capabilities
-
-PAGE 3: SOLUTION
-Our Solution: A comprehensive platform that streamlines operations through AI-powered automation
-Key Features: 
-- Real-time analytics dashboard
-- Automated workflow management
-- Seamless third-party integrations
-- Customizable reporting tools
-How it Works: Cloud-based SaaS platform accessible from any device
-
-PAGE 4: MARKET OPPORTUNITY
-TAM: $85B global market for operational efficiency solutions
-SAM: $22B addressable market in our target regions
-SOM: $5.2B serviceable market in year 1
-Target Customers: Mid-market companies (100-1000 employees) in technology and services sectors
-Market Trends: 40% YoY growth in automation software adoption
-
-PAGE 5: BUSINESS MODEL
-Revenue Streams: Monthly subscriptions, enterprise licensing, professional services
-Pricing Strategy: Tiered pricing from $99/month to $999/month for enterprise
-Sales Channels: Direct sales, partner channels, and self-service onboarding
-
-PAGE 6: COMPETITIVE LANDSCAPE
-Competitors: Established players with outdated technology and poor user experience
-Our Advantages: Modern architecture, better integration capabilities, superior UX
-Differentiation: 3x faster implementation and 40% lower total cost of ownership
-
-PAGE 7: TRACTION & MILESTONES
-Current Progress: MVP developed, 15 pilot customers, 92% customer satisfaction
-Key Metrics: 45% month-over-month growth, $120K ARR, 85% retention rate
-Future Milestones: Expand to 3 new markets, reach 100+ customers, launch mobile app
-
-PAGE 8: TEAM
-Founding Team: Experienced entrepreneurs with 15+ years in technology and business
-Advisors: Industry experts from leading tech companies
-Hiring Plan: Expand engineering and sales teams with 10 new hires
-
-PAGE 9: FUNDING ASK
-Amount Needed: $2M seed round
-Use of Funds: 
-- 40% Product development
-- 30% Sales and marketing
-- 20% Team expansion
-- 10% Operational costs
-Timeline: Achieve profitability within 24 months, 10x growth in 36 months
-
-PAGE 10: CONTACT
-Contact Information: hello@company.com | (555) 123-4567
-Website: www.company.com
-Social Media: @companytech on Twitter and LinkedIn`;
-
-    return NextResponse.json({ pitch: mockPitch });
+    console.error("--- Full Generation Error ---:", error);
+    return NextResponse.json(
+      { error: error.message || "An internal server error occurred." },
+      { status: 500 }
+    );
   }
 }
