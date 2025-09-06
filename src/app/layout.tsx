@@ -17,9 +17,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "QuickPitch - AI Pitch Deck Generator",
-  description: "AI-Powered Pitch Deck Generator for Startups and Students",
+  title: "Lexica – AI Report & Document Generator",
+  description:
+    "Lexica helps students, professionals, and creators transform raw ideas into polished reports and documents instantly with AI.",
+   icons: {
+    icon: "/icon.svg", // <- path to your icon
+   
+  },
 };
+
 
 export default function RootLayout({
   children,
