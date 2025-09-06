@@ -1,0 +1,15 @@
+<svg width="512" height="512" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+   
+    <defs>
+        <linearGradient id="slateGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#334155;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#1e293b;stop-opacity:1" />
+        </linearGradient>
+    </defs>
+    
+   
+    <path d="M14 12 C12.8954 12 12 12.8954 12 14 V50 C12 51.1046 12.8954 52 14 52 H50 C51.1046 52 52 51.1046 52 50 V32 H24 C22.8954 32 22 31.1046 22 30 V12 H14Z" fill="url(#slateGradient)"/>
+
+
+    <path d="M22 12 L42 12 C43.1046 12 44 12.8954 44 14 V30 C44 31.1046 43.1046 32 42 32 H24 C22.8954 32 22 31.1046 22 30 V12Z" fill="#f59e0b"/>
+</svg>
