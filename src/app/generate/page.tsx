@@ -1,416 +1,594 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, FormEvent } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 import jsPDF from "jspdf";
+import { motion, AnimatePresence } from "framer-motion";
+import Head from "next/head";
 
-// Icons for different slide types
-const slideIcons = {
-  problem: "🚨",
-  solution: "💡",
-  market: "📊",
-  product: "🛠️",
-  team: "👥",
-  traction: "📈",
-  competition: "⚔️",
-  business: "💰",
-  investment: "💎",
-  default: "📝"
-};
+// --- Types & Data ---
+interface TemplateField {
+  id: string;
+  label: string;
+  placeholder: string;
+  type: "input" | "textarea";
+}
+interface Template {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  fields: TemplateField[];
+}
 
+const templates: Template[] = [
+  {
+    id: "business_pitch",
+    title: "Business Pitch Report",
+    description: "For investors & partners.",
+    icon: "📊",
+    fields: [
+      {
+        id: "idea",
+        label: "Business Idea",
+        placeholder: "e.g., AI-powered tutor for college students",
+        type: "input",
+      },
+      {
+        id: "target_market",
+        label: "Target Market",
+        placeholder: "e.g., College students in India aged 18-25",
+        type: "input",
+      },
+      {
+        id: "differentiator",
+        label: "Key Differentiator (Optional)",
+        placeholder: "What makes your solution unique?",
+        type: "textarea",
+      },
+    ],
+  },
+  {
+    id: "academic_synopsis",
+    title: "Academic Synopsis",
+    description: "For students & researchers.",
+    icon: "🎓",
+    fields: [
+      {
+        id: "topic",
+        label: "Primary Research Topic",
+        placeholder: "e.g., The Socio-Economic Impact of 5G in Rural Rajasthan",
+        type: "input",
+      },
+      {
+        id: "objective",
+        label: "Key Objectives & Research Questions",
+        placeholder: "What are the main questions you want to answer?",
+        type: "textarea",
+      },
+      {
+        id: "methodology",
+        label: "Proposed Methodology (Optional)",
+        placeholder: "e.g., Quantitative surveys, qualitative interviews",
+        type: "input",
+      },
+    ],
+  },
+  {
+    id: "market_analysis",
+    title: "Market Analysis",
+    description: "For corporate teams & startups.",
+    icon: "📈",
+    fields: [
+      {
+        id: "product",
+        label: "Product or Company to Analyze",
+        placeholder: "e.g., A new D2C brand for artisanal cheese in India",
+        type: "input",
+      },
+      {
+        id: "audience",
+        label: "Primary Target Audience",
+        placeholder: "e.g., Urban millennials in Tier-1 cities, aged 25-40",
+        type: "textarea",
+      },
+      {
+        id: "competitors",
+        label: "Key Competitors (Optional)",
+        placeholder: "e.g., Amul, local dairies, other D2C brands",
+        type: "input",
+      },
+      {
+        id: "goal",
+        label: "Primary Goal of this Report",
+        placeholder:
+          "e.g., To assess market viability and find a niche entry point",
+        type: "input",
+      },
+    ],
+  },
+  {
+    id: "client_proposal",
+    title: "Freelance Proposal",
+    description: "For freelancers & agencies.",
+    icon: "✍️",
+    fields: [
+      {
+        id: "client",
+        label: "Client Name / Industry",
+        placeholder: "e.g., A Jaipur-based handicraft store",
+        type: "input",
+      },
+      {
+        id: "project",
+        label: "Project Overview",
+        placeholder:
+          "e.g., To design and develop a new e-commerce website to boost online sales",
+        type: "textarea",
+      },
+      {
+        id: "deliverables",
+        label: "Key Deliverables",
+        placeholder: "e.g., 5-page website design, Shopify development",
+        type: "textarea",
+      },
+    ],
+  },
+  {
+    id: "lesson_plan",
+    title: "Educator Lesson Plan",
+    description:
+      "For teachers to generate structured lesson plans with activities.",
+    icon: "🍎",
+    fields: [
+      {
+        id: "topic",
+        label: "Lesson Topic",
+        placeholder: "e.g., Introduction to Photosynthesis for Class 10",
+        type: "input",
+      },
+      {
+        id: "objective",
+        label: "Learning Objectives",
+        placeholder: "e.g., Students will be able to define photosynthesis.",
+        type: "textarea",
+      },
+      {
+        id: "duration",
+        label: "Class Duration (in minutes)",
+        placeholder: "e.g., 45 minutes",
+        type: "input",
+      },
+    ],
+  },
+];
+
+// --- Main Page Component ---
 export default function GeneratePage() {
+  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(
+    null
+  );
   const [idea, setIdea] = useState("");
-  const [pitch, setPitch] = useState("");
+  const [report, setReport] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isEnhancing, setIsEnhancing] = useState(false);
   const [error, setError] = useState("");
-  const [currentPage, setCurrentPage] = useState(0);
-  const [isSaving, setIsSaving] = useState(false);
+
   const { data: session, status } = useSession();
   const router = useRouter();
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/api/auth/signin");
-    }
+    if (status === "unauthenticated") router.push("/api/auth/signin");
+    // Dynamically load the html-to-docx script
+    const script = document.createElement("script");
+    script.src = "https://unpkg.com/html-to-docx@1.8.0/dist/html-to-docx.js";
+    script.async = true;
+    document.body.appendChild(script);
+    return () => {
+      document.body.removeChild(script);
+    };
   }, [status, router]);
 
-  if (status === "loading") {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-amber-100 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600"></div>
-      </div>
-    );
-  }
+  const handleEnhancePrompt = async () => {
+    if (!idea || !selectedTemplate) return;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!idea.trim()) {
-      setError("Please enter your idea");
-      return;
+    setIsEnhancing(true);
+
+    setError("");
+
+    try {
+      const response = await fetch("/api/enhance", {
+        method: "POST",
+
+        headers: { "Content-Type": "application/json" },
+
+        body: JSON.stringify({ idea, template: selectedTemplate }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok)
+        throw new Error(data.error || "Failed to enhance prompt");
+
+      setIdea(data.enhancedPrompt);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsEnhancing(false);
     }
-
+  };
+  const handleSubmit = async (e?: FormEvent) => {
+    if (e) e.preventDefault();
+    if (!idea || !selectedTemplate) return;
     setIsGenerating(true);
     setError("");
-    setCurrentPage(0);
-    
+    setReport("");
     try {
       const response = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idea: idea.trim() }),
+        body: JSON.stringify({ idea, template: selectedTemplate.id }),
       });
-
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Failed to generate pitch");
-      setPitch(data.pitch);
+      if (!response.ok)
+        throw new Error(data.error || "Failed to generate report");
+      setReport(data.pitch || "");
     } catch (err: any) {
-      setError(err.message || "Something went wrong");
+      setError(err.message);
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const pages = pitch ? pitch.split('\n\n').filter(page => page.trim()) : [];
-
-  const nextPage = () => setCurrentPage(prev => Math.min(prev + 1, pages.length - 1));
-  const prevPage = () => setCurrentPage(prev => Math.max(prev - 1, 0));
-
-  const getSlideType = (pageContent: string) => {
-    const firstLine = pageContent.split(':')[0].toLowerCase();
-    if (firstLine.includes('problem')) return 'problem';
-    if (firstLine.includes('solution')) return 'solution';
-    if (firstLine.includes('market')) return 'market';
-    if (firstLine.includes('product')) return 'product';
-    if (firstLine.includes('team')) return 'team';
-    if (firstLine.includes('traction')) return 'traction';
-    if (firstLine.includes('competition')) return 'competition';
-    if (firstLine.includes('business')) return 'business';
-    if (firstLine.includes('investment') || firstLine.includes('ask')) return 'investment';
-    return 'default';
+  const handleBack = () => {
+    setSelectedTemplate(null);
+    setIdea("");
+    setReport("");
+    setError("");
   };
 
+  // --- ⬇️ START: CORRECTED & FINAL DOWNLOAD FUNCTIONS ⬇️ ---
+
   const downloadPDF = () => {
-    // Create new PDF with A4 dimensions (210mm x 297mm)
+    if (!report) {
+      alert("Report content is not available.");
+      return;
+    }
+
     const doc = new jsPDF({
       orientation: "portrait",
       unit: "mm",
-      format: "a4"
+      format: "a4",
     });
-    
+    const sections = report.split("\n\n").map((block) => ({
+      title: block.split("\n")[0]?.trim() || "",
+      content: block.split("\n").slice(1).join("\n").trim(),
+    }));
+
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 20;
-    const contentWidth = pageWidth - (margin * 2);
-    
-    // Add title page with professional design
-    doc.setFillColor(255, 255, 255);
-    doc.rect(0, 0, pageWidth, pageHeight, 'F');
-    
-    // Add decorative header
-    doc.setFillColor(251, 191, 36);
-    doc.rect(0, 0, pageWidth, 80, 'F');
-    
-    // Title
-    doc.setFontSize(28);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(120, 53, 15);
-    doc.text(idea, pageWidth / 2, margin + 40, { align: 'center' });
-    
-    // Subtitle
-    doc.setFontSize(16);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(180, 83, 9);
-    doc.text("Investor Pitch Deck", pageWidth / 2, margin + 55, { align: 'center' });
-    
-    // Footer on title page
-    doc.setFontSize(12);
-    doc.setTextColor(100, 100, 100);
-    doc.text("Generated by QuickPitch", pageWidth / 2, pageHeight - 15, { align: 'center' });
-    
-    // Add each slide as a page
-    pages.forEach((page, index) => {
-      if (index > 0) doc.addPage();
-      
-      const slideType = getSlideType(page);
-      const title = page.split(":")[0];
-      const content = page.replace(/^[^:]+:/, "").trim();
-      
-      // White background for content
-      doc.setFillColor(255, 255, 255);
-      doc.rect(0, 0, pageWidth, pageHeight, 'F');
-      
-      // Header with color
-      doc.setFillColor(253, 230, 198);
-      doc.rect(0, 0, pageWidth, 25, 'F');
-      
-      // Slide title with icon
-      doc.setFontSize(16);
+    const contentWidth = pageWidth - margin * 2;
+    const topMargin = 25;
+    const bottomMargin = 25;
+    let pageNumber = 1;
+
+    const addHeader = (text: string) => {
+      doc.setFontSize(9);
       doc.setFont("helvetica", "bold");
-      doc.setTextColor(120, 53, 15);
-      doc.text(`${slideIcons[slideType] || slideIcons.default} ${title}`, margin, 17);
-      
-      // Page number
-      doc.setFontSize(10);
-      doc.setTextColor(180, 83, 9);
-      doc.text(`Page ${index + 1} of ${pages.length}`, pageWidth - margin, 17, { align: 'right' });
-      
-      // Content
-      doc.setFontSize(12);
+      doc.setTextColor("#64748b");
+      doc.text(text, margin, 15);
+    };
+    const addFooter = () => {
+      doc.setFontSize(9);
       doc.setFont("helvetica", "normal");
-      doc.setTextColor(50, 50, 50);
-      
-      // Split text into lines that fit the page width
-      const splitText = doc.splitTextToSize(content, contentWidth);
-      
-      // Calculate text height and position
-      const textHeight = doc.getTextDimensions(splitText).h;
-      const startY = 40;
-      
-      // Add content with proper line spacing
-      doc.text(splitText, margin, startY, {
-        maxWidth: contentWidth,
-        lineHeightFactor: 1.5
+      doc.setTextColor("#94a3b8");
+      doc.text(`Page ${pageNumber}`, pageWidth - margin, pageHeight - 15, {
+        align: "right",
       });
-      
-      // Add footer separator
-      doc.setDrawColor(251, 191, 36);
-      doc.line(margin, pageHeight - 20, pageWidth - margin, pageHeight - 20);
-      
-      // Add footer text
-      doc.setFontSize(10);
-      doc.setTextColor(100, 100, 100);
-      doc.text(idea, margin, pageHeight - 15);
-      doc.text("Confidential", pageWidth - margin, pageHeight - 15, { align: 'right' });
+    };
+
+    const calculateSectionHeight = (section: Section) => {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+      const titleLines = doc.splitTextToSize(
+        section.title.toUpperCase(),
+        contentWidth
+      );
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
+      const contentLines = doc.splitTextToSize(section.content, contentWidth);
+      const titleHeight = titleLines.length * 7 + 10;
+      const contentHeight = contentLines.length * 5;
+      return titleHeight + contentHeight;
+    };
+
+    // 1. Title Page
+    addHeader(selectedTemplate?.title || "Report");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(28);
+    doc.setTextColor("#0f172a");
+    const titleLines = doc.splitTextToSize(
+      idea.slice(0, 100),
+      contentWidth * 0.9
+    );
+    doc.text(titleLines, pageWidth / 2, pageHeight / 2 - 20, {
+      align: "center",
     });
-    
-    // Save the PDF
-    doc.save(`${idea.replace(/\s+/g, '-')}-pitch-deck.pdf`);
-  };
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(16);
+    doc.setTextColor("#475569");
+    doc.text("AI Generated Report", pageWidth / 2, pageHeight / 2 + 10, {
+      align: "center",
+    });
+    doc.setFontSize(10);
+    doc.setTextColor("#94a3b8");
+    doc.text(
+      `Report Date: ${new Date().toLocaleDateString("en-IN")}`,
+      pageWidth / 2,
+      pageHeight - 30,
+      { align: "center" }
+    );
+    addFooter();
 
-  const savePitch = async () => {
-    if (!session || !pitch) return;
-    
-    setIsSaving(true);
-    try {
-      const response = await fetch("/api/pitches", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          title: idea,
-          content: pitch,
-          userId: session.user.id 
-        }),
+    // 2. Content Pages
+    doc.addPage();
+    pageNumber++;
+    addHeader(selectedTemplate?.title || "Report");
+    let y = topMargin;
+
+    sections.forEach((section, index) => {
+      if (!section.title || !section.content) return;
+      const sectionHeight = calculateSectionHeight(section);
+      const spaceForNextSection = pageHeight - y - bottomMargin;
+
+      if (index > 0 && sectionHeight > spaceForNextSection) {
+        addFooter();
+        doc.addPage();
+        pageNumber++;
+        y = topMargin;
+        addHeader(selectedTemplate?.title || "Report");
+      }
+      if (index > 0) y += 10;
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+      doc.setTextColor("#1e293b");
+      const sectionTitleLines = doc.splitTextToSize(
+        section.title.toUpperCase(),
+        contentWidth
+      );
+      doc.text(sectionTitleLines, margin, y);
+      y += sectionTitleLines.length * 7 + 5;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
+      doc.setTextColor("#334155");
+      const contentLines = doc.splitTextToSize(section.content, contentWidth);
+      contentLines.forEach((line: string) => {
+        if (y + 5 > pageHeight - bottomMargin) {
+          addFooter();
+          doc.addPage();
+          pageNumber++;
+          y = topMargin;
+          addHeader(selectedTemplate?.title || "Report");
+          doc.setFontSize(9);
+          doc.setTextColor("#64748b");
+          doc.text(`( ${section.title.toUpperCase()} - Continued )`, margin, y);
+          y += 10;
+        }
+        doc.text(line, margin, y);
+        y += 5;
       });
+    });
 
-      if (!response.ok) throw new Error("Failed to save pitch");
-      
-      // Redirect to dashboard after successful save
-      router.push("/dashboard");
-    } catch (err: any) {
-      setError(err.message || "Something went wrong");
-    } finally {
-      setIsSaving(false);
-    }
+    addFooter();
+    doc.save(`QuickPitch-${selectedTemplate?.title.replace(/\s+/g, "-")}.pdf`);
   };
+
+  const downloadDocx = async () => {
+    if (!report || !(window as any).htmlToDocx) {
+      alert(
+        "Report content is not available or the DOCX script is loading. Please try again in a moment."
+      );
+      return;
+    }
+
+    const sections = report.split("\n\n").map((block) => ({
+      title: block.split("\n")[0]?.trim() || "",
+      content: block.split("\n").slice(1).join("\n").trim(),
+    }));
+
+    let htmlString = `<h1 style="font-size: 24px; font-weight: bold; color: #0f172a;">${idea.slice(
+      0,
+      100
+    )}</h1>`;
+    htmlString += `<h2 style="font-size: 18px; font-weight: bold; color: #475569;">${selectedTemplate?.title}</h2><br/>`;
+
+    sections.forEach((sec) => {
+      if (sec.title && sec.content) {
+        htmlString += `<h3 style="font-size: 16px; font-weight: bold; color: #b45309; margin-top: 20px;">${
+          sec.title
+        }</h3><p style="font-size: 12px; line-height: 1.5;">${sec.content.replace(
+          /\n/g,
+          "<br/>"
+        )}</p>`;
+      }
+    });
+
+    const blob = await (window as any).htmlToDocx.asBlob(htmlString);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `QuickPitch-${selectedTemplate?.title.replace(
+      /\s+/g,
+      "-"
+    )}.docx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // --- ⬆️ END: CORRECTED & FINAL DOWNLOAD FUNCTIONS ⬆️ ---
+  if (status === "loading") {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-amber-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-800"></div>
+                   {" "}
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-amber-100 p-6">
-      <div className="max-w-6xl mx-auto">
-        <header className="mb-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-amber-600 rounded-lg flex items-center justify-center">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                </svg>
-              </div>
-              <h1 className="text-2xl font-bold text-amber-900">QuickPitch</h1>
-            </div>
-            <button onClick={() => router.push("/dashboard")} className="text-amber-700 hover:text-amber-800 text-sm underline">
-              Back to Dashboard
-            </button>
-          </div>
-        </header>
-
-        <main>
-          <div className="text-center mb-8">
-            <h2 className="text-4xl font-bold text-amber-900 mb-4">Generate Investor Pitch Deck</h2>
-            <p className="text-lg text-amber-700">Create professional VC-ready pitch decks in seconds</p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-white rounded-2xl p-6 shadow-lg border border-amber-100">
-              <h3 className="text-2xl font-semibold text-amber-900 mb-6">Your Startup Idea</h3>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                  <label htmlFor="idea" className="block text-sm font-medium text-amber-700 mb-2">
-                    Describe your startup idea
-                  </label>
-                  <textarea
-                    id="idea"
-                    value={idea}
-                    onChange={(e) => setIdea(e.target.value)}
-                    placeholder="e.g., An AI-powered platform for remote team collaboration..."
-                    className="w-full h-32 p-4 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 resize-none"
-                    disabled={isGenerating}
-                  />
+    <>
+      <Head>
+        <title>AI Report Generator</title>
+      </Head>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-amber-50 font-sans">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <AnimatePresence mode="wait">
+            {!selectedTemplate ? (
+              <motion.div
+                key="selector"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <div className="text-center mb-12">
+                  <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
+                    AI Report Generator
+                  </h1>
+                  <p className="text-xl text-slate-600">
+                    What would you like to create?
+                  </p>
                 </div>
-
-                {error && (
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-red-700 text-sm">{error}</p>
-                  </div>
-                )}
-
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {templates.map((t) => (
+                    <motion.div
+                      key={t.id}
+                      whileHover={{ scale: 1.03, y: -5 }}
+                      onClick={() => setSelectedTemplate(t)}
+                      className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200 cursor-pointer transition-shadow hover:shadow-xl"
+                    >
+                      <div className="text-3xl mb-3">{t.icon}</div>
+                      <h2 className="text-xl font-bold text-slate-800">
+                        {t.title}
+                      </h2>
+                      <p className="text-slate-600 mt-1">{t.description}</p>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="workspace"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
                 <button
-                  type="submit"
-                  disabled={isGenerating}
-                  className="w-full bg-amber-600 text-white py-3 rounded-lg font-medium hover:bg-amber-700 transition-all duration-300 shadow-lg hover:shadow-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  onClick={handleBack}
+                  className="text-sm font-semibold text-slate-600 hover:text-slate-900 mb-8 flex items-center gap-2"
                 >
-                  {isGenerating ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Generating Pitch Deck...
-                    </>
-                  ) : (
-                    "Generate Pitch Deck"
-                  )}
+                  ← Back to Templates
                 </button>
-              </form>
-            </div>
-
-            <div className="bg-white rounded-2xl p-6 shadow-lg border border-amber-100">
-              <h3 className="text-2xl font-semibold text-amber-900 mb-6">Pitch Deck</h3>
-              
-              {pitch ? (
-                <div className="space-y-6">
-                  <div className="relative">
-                    <AnimatePresence mode="wait">
-                      <motion.div
-                        key={currentPage}
-                        initial={{ opacity: 0, x: 50 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -50 }}
-                        transition={{ duration: 0.3 }}
-                        className="bg-white rounded-2xl shadow-lg p-8 border border-amber-100 min-h-[400px] flex flex-col"
+                {report && !isGenerating ? (
+                  <div className="bg-white rounded-2xl shadow-lg border border-slate-200">
+                    <article className="p-6 md:p-10 prose prose-slate max-w-none">
+                      <div className="whitespace-pre-line">{report}</div>
+                    </article>
+                    <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row gap-4">
+                      <button
+                        onClick={() => handleSubmit()}
+                        className="flex-1 bg-amber-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-amber-600 flex justify-center items-center gap-2"
                       >
-                        {pages[currentPage] && (
-                          <>
-                            <div className="flex items-center mb-4">
-                              <span className="text-2xl mr-3">
-                                {slideIcons[getSlideType(pages[currentPage])]}
-                              </span>
-                              <h2 className="text-2xl font-bold text-amber-900">
-                                {pages[currentPage].split(":")[0]}
-                              </h2>
-                            </div>
-                            <div className="prose prose-amber max-w-none flex-grow">
-                              <p className="text-amber-700 whitespace-pre-line">
-                                {pages[currentPage].replace(/^[^:]+:/, "").trim()}
-                              </p>
-                            </div>
-                          </>
-                        )}
-                      </motion.div>
-                    </AnimatePresence>
-
-                    {/* Dots pagination */}
-                    <div className="flex justify-center mt-4 space-x-2">
-                      {pages.map((_, index) => (
-                        <button
-                          key={index}
-                          onClick={() => setCurrentPage(index)}
-                          className={`w-3 h-3 rounded-full ${
-                            currentPage === index ? "bg-amber-600" : "bg-amber-200"
-                          }`}
-                          aria-label={`Go to slide ${index + 1}`}
-                        />
-                      ))}
+                        Regenerate
+                      </button>
+                      <button
+                        onClick={downloadPDF}
+                        className="flex-1 border-2 border-slate-300 text-slate-700 px-6 py-3 rounded-lg font-semibold hover:border-amber-400 hover:text-amber-700"
+                      >
+                        Download PDF
+                      </button>
+                      <button
+                        onClick={downloadDocx}
+                        className="flex-1 border-2 border-slate-300 text-slate-700 px-6 py-3 rounded-lg font-semibold hover:border-amber-400 hover:text-amber-700"
+                      >
+                        Download DOCX
+                      </button>
                     </div>
                   </div>
-
-                  <div className="flex justify-between items-center">
-                    <button
-                      onClick={prevPage}
-                      disabled={currentPage === 0}
-                      className="px-4 py-2 bg-amber-100 text-amber-700 rounded-lg disabled:opacity-50 flex items-center"
-                    >
-                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path>
-                      </svg>
-                      Previous
-                    </button>
-                    
-                    <span className="text-amber-600 text-sm">
-                      Page {currentPage + 1} of {pages.length}
-                    </span>
-                    
-                    <button
-                      onClick={nextPage}
-                      disabled={currentPage === pages.length - 1}
-                      className="px-4 py-2 bg-amber-100 text-amber-700 rounded-lg disabled:opacity-50 flex items-center"
-                    >
-                      Next
-                      <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
-                      </svg>
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <button
-                      onClick={downloadPDF}
-                      className="bg-amber-600 text-white py-2 rounded-lg font-medium hover:bg-amber-700 transition-colors flex items-center justify-center"
-                    >
-                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                      </svg>
-                      Download PDF
-                    </button>
-                    <button
-                      onClick={savePitch}
-                      disabled={isSaving}
-                      className="border border-amber-300 text-amber-700 py-2 rounded-lg font-medium hover:bg-amber-50 transition-colors flex items-center justify-center disabled:opacity-50"
-                    >
-                      {isSaving ? (
-                        <>
-                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-amber-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          Saving...
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
-                          </svg>
-                          Save to Dashboard
-                        </>
+                ) : (
+                  <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8 border border-slate-200">
+                    <div className="flex items-start gap-4 mb-6">
+                      <span className="text-3xl mt-1">
+                        {selectedTemplate.icon}
+                      </span>
+                      <div>
+                        <h1 className="text-2xl font-bold text-slate-900">
+                          {selectedTemplate.title}
+                        </h1>
+                        <p className="text-slate-600 text-sm">
+                          Describe your topic below, or enhance a simple idea
+                          with AI.
+                        </p>
+                      </div>
+                    </div>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                      <textarea
+                        value={idea}
+                        onChange={(e) => setIdea(e.target.value)}
+                        placeholder={selectedTemplate.placeholder}
+                        className="w-full h-40 p-4 text-base text-slate-800 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-400 focus:border-amber-400 resize-none transition-shadow"
+                      />
+                      {error && (
+                        <div className="p-3 bg-red-50 text-red-700 text-sm font-medium rounded-lg border border-red-200">
+                          {error}
+                        </div>
                       )}
-                    </button>
+                      <div className="flex flex-col sm:flex-row gap-4">
+                        <button
+                          type="button"
+                          onClick={handleEnhancePrompt}
+                          disabled={
+                            isEnhancing || isGenerating || idea.length < 5
+                          }
+                          className="flex-1 bg-amber-100 text-amber-800 px-6 py-3 rounded-lg font-semibold hover:bg-amber-200 transition-all flex justify-center items-center gap-2 disabled:opacity-50"
+                        >
+                          {isEnhancing ? (
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-amber-800"></div>
+                          ) : (
+                            "✨ Enhance Prompt"
+                          )}
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={
+                            isGenerating || isEnhancing || idea.length < 10
+                          }
+                          className="flex-1 bg-slate-800 text-white px-6 py-3 rounded-lg font-semibold hover:bg-slate-900 transition-all shadow-lg disabled:opacity-50"
+                        >
+                          {isGenerating ? "Generating..." : "Generate Report"}
+                        </button>
+                      </div>
+                    </form>
+                    {isGenerating && (
+                      <div className="text-center pt-6 mt-6 border-t border-slate-200">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800 mx-auto"></div>
+                        <p className="mt-4 text-slate-600 font-semibold">
+                          The AI is authoring your report...
+                        </p>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ) : (
-                <div className="text-center py-16">
-                  <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-8 h-8 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                    </svg>
-                  </div>
-                  <p className="text-amber-600">Your professional pitch deck will appear here</p>
-                  <p className="text-sm text-amber-500 mt-2">Enter your idea to generate a complete VC-ready deck</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </main>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
