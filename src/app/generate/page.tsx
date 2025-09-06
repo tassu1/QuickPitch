@@ -19,6 +19,7 @@ interface Template {
   title: string;
   description: string;
   icon: string;
+  placeholder?: string;
   fields: TemplateField[];
 }
 
@@ -250,186 +251,62 @@ export default function GeneratePage() {
 
   // --- ⬇️ START: CORRECTED & FINAL DOWNLOAD FUNCTIONS ⬇️ ---
 
-  const downloadPDF = () => {
-    if (!report) {
-      alert("Report content is not available.");
-      return;
+const downloadPDF = () => {
+  if (!report) {
+    alert("Report content is not available.");
+    return;
+  }
+
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 40;
+  let y = margin;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(12);
+
+  // Split the full report into wrapped lines
+  const lines = doc.splitTextToSize(report, pageWidth - margin * 2);
+
+  lines.forEach((line:string) => {
+    if (y + 20 > pageHeight - margin) {
+      doc.addPage();
+      y = margin;
     }
+    doc.text(line, margin, y);
+    y += 16; // line height
+  });
 
-    const doc = new jsPDF({
-      orientation: "portrait",
-      unit: "mm",
-      format: "a4",
+  doc.save(`Report-${selectedTemplate?.title.replace(/\s+/g, "-")}.pdf`);
+};
+
+const downloadDocx = async () => {
+  if (!report) return alert("Report content is not available.");
+  try {
+    const res = await fetch("/api/docx", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ report, title: selectedTemplate?.title || "Report" }),
     });
-    const sections = report.split("\n\n").map((block) => ({
-      title: block.split("\n")[0]?.trim() || "",
-      content: block.split("\n").slice(1).join("\n").trim(),
-    }));
-
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 20;
-    const contentWidth = pageWidth - margin * 2;
-    const topMargin = 25;
-    const bottomMargin = 25;
-    let pageNumber = 1;
-
-    const addHeader = (text: string) => {
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor("#64748b");
-      doc.text(text, margin, 15);
-    };
-    const addFooter = () => {
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor("#94a3b8");
-      doc.text(`Page ${pageNumber}`, pageWidth - margin, pageHeight - 15, {
-        align: "right",
-      });
-    };
-
-    const calculateSectionHeight = (section: Section) => {
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(16);
-      const titleLines = doc.splitTextToSize(
-        section.title.toUpperCase(),
-        contentWidth
-      );
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(11);
-      const contentLines = doc.splitTextToSize(section.content, contentWidth);
-      const titleHeight = titleLines.length * 7 + 10;
-      const contentHeight = contentLines.length * 5;
-      return titleHeight + contentHeight;
-    };
-
-    // 1. Title Page
-    addHeader(selectedTemplate?.title || "Report");
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(28);
-    doc.setTextColor("#0f172a");
-    const titleLines = doc.splitTextToSize(
-      idea.slice(0, 100),
-      contentWidth * 0.9
-    );
-    doc.text(titleLines, pageWidth / 2, pageHeight / 2 - 20, {
-      align: "center",
-    });
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(16);
-    doc.setTextColor("#475569");
-    doc.text("AI Generated Report", pageWidth / 2, pageHeight / 2 + 10, {
-      align: "center",
-    });
-    doc.setFontSize(10);
-    doc.setTextColor("#94a3b8");
-    doc.text(
-      `Report Date: ${new Date().toLocaleDateString("en-IN")}`,
-      pageWidth / 2,
-      pageHeight - 30,
-      { align: "center" }
-    );
-    addFooter();
-
-    // 2. Content Pages
-    doc.addPage();
-    pageNumber++;
-    addHeader(selectedTemplate?.title || "Report");
-    let y = topMargin;
-
-    sections.forEach((section, index) => {
-      if (!section.title || !section.content) return;
-      const sectionHeight = calculateSectionHeight(section);
-      const spaceForNextSection = pageHeight - y - bottomMargin;
-
-      if (index > 0 && sectionHeight > spaceForNextSection) {
-        addFooter();
-        doc.addPage();
-        pageNumber++;
-        y = topMargin;
-        addHeader(selectedTemplate?.title || "Report");
-      }
-      if (index > 0) y += 10;
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(16);
-      doc.setTextColor("#1e293b");
-      const sectionTitleLines = doc.splitTextToSize(
-        section.title.toUpperCase(),
-        contentWidth
-      );
-      doc.text(sectionTitleLines, margin, y);
-      y += sectionTitleLines.length * 7 + 5;
-
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(11);
-      doc.setTextColor("#334155");
-      const contentLines = doc.splitTextToSize(section.content, contentWidth);
-      contentLines.forEach((line: string) => {
-        if (y + 5 > pageHeight - bottomMargin) {
-          addFooter();
-          doc.addPage();
-          pageNumber++;
-          y = topMargin;
-          addHeader(selectedTemplate?.title || "Report");
-          doc.setFontSize(9);
-          doc.setTextColor("#64748b");
-          doc.text(`( ${section.title.toUpperCase()} - Continued )`, margin, y);
-          y += 10;
-        }
-        doc.text(line, margin, y);
-        y += 5;
-      });
-    });
-
-    addFooter();
-    doc.save(`QuickPitch-${selectedTemplate?.title.replace(/\s+/g, "-")}.pdf`);
-  };
-
-  const downloadDocx = async () => {
-    if (!report || !(window as any).htmlToDocx) {
-      alert(
-        "Report content is not available or the DOCX script is loading. Please try again in a moment."
-      );
-      return;
-    }
-
-    const sections = report.split("\n\n").map((block) => ({
-      title: block.split("\n")[0]?.trim() || "",
-      content: block.split("\n").slice(1).join("\n").trim(),
-    }));
-
-    let htmlString = `<h1 style="font-size: 24px; font-weight: bold; color: #0f172a;">${idea.slice(
-      0,
-      100
-    )}</h1>`;
-    htmlString += `<h2 style="font-size: 18px; font-weight: bold; color: #475569;">${selectedTemplate?.title}</h2><br/>`;
-
-    sections.forEach((sec) => {
-      if (sec.title && sec.content) {
-        htmlString += `<h3 style="font-size: 16px; font-weight: bold; color: #b45309; margin-top: 20px;">${
-          sec.title
-        }</h3><p style="font-size: 12px; line-height: 1.5;">${sec.content.replace(
-          /\n/g,
-          "<br/>"
-        )}</p>`;
-      }
-    });
-
-    const blob = await (window as any).htmlToDocx.asBlob(htmlString);
+    if (!res.ok) throw new Error("Failed to generate docx");
+    const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `QuickPitch-${selectedTemplate?.title.replace(
+    a.download = `QuickPitch-${(selectedTemplate?.title || "Report").replace(
       /\s+/g,
       "-"
     )}.docx`;
     document.body.appendChild(a);
     a.click();
-    document.body.removeChild(a);
+    a.remove();
     URL.revokeObjectURL(url);
-  };
+  } catch (err: any) {
+    alert(err.message || "Download failed");
+  }
+};
+
 
   // --- ⬆️ END: CORRECTED & FINAL DOWNLOAD FUNCTIONS ⬆️ ---
   if (status === "loading") {
