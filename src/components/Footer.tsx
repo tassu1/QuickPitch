@@ -1,68 +1,76 @@
+'use client'; 
+
 import Link from 'next/link';
+import {  Github, Linkedin } from 'lucide-react'; 
+
+const SocialIcon = ({ href, children }: { href: string, children: React.ReactNode }) => (
+  <a href={href} target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-amber-600 transition-colors">
+    {children}
+  </a>
+);
 
 export default function Footer() {
   return (
-    <footer className="bg-gray-50 border-t border-gray-200 py-12 px-4 sm:px-6 lg:px-8">
+    <footer className="bg-slate-50 border-t border-slate-200 py-16 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
+          
           {/* Company Info */}
-          <div>
+          <div className="col-span-2 md:col-span-1">
             <div className="flex items-center mb-4">
-              <div className="w-8 h-8 bg-gray-800 rounded-md flex items-center justify-center mr-2">
-                <span className="text-white font-bold text-sm">QP</span>
+              <div className="w-8 h-8 bg-slate-800 rounded-lg flex items-center justify-center mr-2">
+                <span className="text-white font-bold text-lg">L</span>
               </div>
-              <span className="text-lg font-semibold text-gray-800">QuickPitch</span>
+              <span className="text-lg font-semibold text-slate-800">Lexica</span>
             </div>
-            <p className="text-gray-600 text-sm mb-4">
-              AI-powered pitch generation for startups, entrepreneurs, and innovators.
-            </p>
-            <p className="text-gray-500 text-sm">
-              © 2025 QuickPitch. All rights reserved.
+            <p className="text-slate-600 text-sm">
+              AI-powered report generation for students, professionals, and creatives.
             </p>
           </div>
 
-          {/* Product */}
+          {/* Product Links */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-800 uppercase tracking-wider mb-4">Product</h3>
-            <ul className="space-y-2">
-              <li><a href="#features" className="text-sm text-gray-600 hover:text-gray-800 transition-colors">Features</a></li>
-              <li><a href="#pricing" className="text-sm text-gray-600 hover:text-gray-800 transition-colors">Pricing</a></li>
-              <li><a href="#" className="text-sm text-gray-600 hover:text-gray-800 transition-colors">Use Cases</a></li>
-              <li><a href="#" className="text-sm text-gray-600 hover:text-gray-800 transition-colors">API</a></li>
+            <h3 className="text-sm font-semibold text-slate-800 uppercase tracking-wider mb-4">Product</h3>
+            <ul className="space-y-3">
+              <li><a href="/#features" className="text-sm text-slate-600 hover:text-amber-600 transition-colors">Features</a></li>
+              <li><a href="/#use-cases" className="text-sm text-slate-600 hover:text-amber-600 transition-colors">Use Cases</a></li>
+              <li><Link href="/generate" className="text-sm text-slate-600 hover:text-amber-600 transition-colors">Get Started</Link></li>
             </ul>
           </div>
 
-          {/* Resources */}
+          {/* Company Links */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-800 uppercase tracking-wider mb-4">Resources</h3>
-            <ul className="space-y-2">
-              <li><a href="#" className="text-sm text-gray-600 hover:text-gray-800 transition-colors">Blog</a></li>
-              <li><a href="#" className="text-sm text-gray-600 hover:text-gray-800 transition-colors">Tutorials</a></li>
-              <li><a href="#" className="text-sm text-gray-600 hover:text-gray-800 transition-colors">Documentation</a></li>
-              <li><a href="#" className="text-sm text-gray-600 hover:text-gray-800 transition-colors">Support</a></li>
+            <h3 className="text-sm font-semibold text-slate-800 uppercase tracking-wider mb-4">Company</h3>
+            <ul className="space-y-3">
+              <li><a href="#" className="text-sm text-slate-600 hover:text-amber-600 transition-colors">About Us</a></li>
+              <li><a href="#" className="text-sm text-slate-600 hover:text-amber-600 transition-colors">Blog</a></li>
+              <li><a href="#" className="text-sm text-slate-600 hover:text-amber-600 transition-colors">Contact</a></li>
             </ul>
           </div>
 
-          {/* Company */}
+          {/* Legal Links */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-800 uppercase tracking-wider mb-4">Company</h3>
-            <ul className="space-y-2">
-              <li><a href="#" className="text-sm text-gray-600 hover:text-gray-800 transition-colors">About</a></li>
-              <li><a href="#" className="text-sm text-gray-600 hover:text-gray-800 transition-colors">Careers</a></li>
-              <li><a href="#" className="text-sm text-gray-600 hover:text-gray-800 transition-colors">Contact</a></li>
-              <li><a href="#" className="text-sm text-gray-600 hover:text-gray-800 transition-colors">Partners</a></li>
+            <h3 className="text-sm font-semibold text-slate-800 uppercase tracking-wider mb-4">Legal</h3>
+            <ul className="space-y-3">
+              <li><a href="#" className="text-sm text-slate-600 hover:text-amber-600 transition-colors">Terms of Service</a></li>
+              <li><a href="#" className="text-sm text-slate-600 hover:text-amber-600 transition-colors">Privacy Policy</a></li>
             </ul>
           </div>
         </div>
         
-        <div className="border-t border-gray-200 pt-8 flex flex-col md:flex-row justify-between items-center">
-          <p className="text-sm text-gray-500">
-            Transforming ideas into compelling pitches with AI technology.
+        <div className="border-t border-slate-200 pt-8 flex flex-col md:flex-row justify-between items-center">
+          <p className="text-sm text-slate-500 text-center md:text-left">
+            © {new Date().getFullYear()} Lexica. All rights reserved. An AI project by Md Tahseen Alam.
           </p>
           <div className="flex space-x-6 mt-4 md:mt-0">
-            <a href="#" className="text-sm text-gray-500 hover:text-gray-800 transition-colors">Terms</a>
-            <a href="#" className="text-sm text-gray-500 hover:text-gray-800 transition-colors">Privacy</a>
-            <a href="#" className="text-sm text-gray-500 hover:text-gray-800 transition-colors">Cookies</a>
+          
+
+            <SocialIcon href="https://github.com/tassu1/QuickPitch">
+              <Github size={20} />
+            </SocialIcon>
+            <SocialIcon href="https://www.linkedin.com/in/md-tahseen-alam-892317263/">
+               <Linkedin size={20} />
+            </SocialIcon>
           </div>
         </div>
       </div>
